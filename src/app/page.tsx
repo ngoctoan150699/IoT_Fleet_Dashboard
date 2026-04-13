@@ -5,13 +5,21 @@ import { MqttProvider } from '@/lib/mqtt-context';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DeviceDashboard from '@/components/DeviceDashboard';
+import LoginPage from '@/components/LoginPage';
 
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
-  // Restore last selected devices
+  // Check login status and restore last selected devices
   useEffect(() => {
+    // Check local session
+    const authSession = localStorage.getItem('thaco_auth_session');
+    if (authSession === 'true') {
+      setIsAuthenticated(true);
+    }
+
     const saved = localStorage.getItem('mqtt_selected_devices');
     if (saved) {
       try {
@@ -30,6 +38,21 @@ export default function Home() {
     }
   }, []);
 
+  const handleLogin = (user: string, pass: string): boolean => {
+    // Correct credentials as requested: admin / thaco@123
+    if (user === 'admin' && pass === 'thaco@123') {
+      setIsAuthenticated(true);
+      localStorage.setItem('thaco_auth_session', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('thaco_auth_session');
+  };
+
   const handleSelect = (ids: string[]) => {
     setSelectedIds(ids);
     localStorage.setItem('mqtt_selected_devices', JSON.stringify(ids));
@@ -47,16 +70,14 @@ export default function Home() {
     }
   };
 
-  // Sync theme state with document class on mount
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains('dark');
-    setTheme(isDark ? 'dark' : 'light');
-  }, []);
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   return (
     <MqttProvider>
       <div className="flex h-screen flex-col overflow-hidden">
-        <Header theme={theme} toggleTheme={toggleTheme} />
+        <Header theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar selectedIds={selectedIds} onSelectChange={handleSelect} />
           <main className="flex flex-1 flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
