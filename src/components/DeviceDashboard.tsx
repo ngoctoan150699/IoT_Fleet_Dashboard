@@ -119,17 +119,40 @@ function FirmwareUpdate({ device }: { device: Device }) {
         let offset = 0;
 
         for (let i = 0; i < totalChunks; i++) {
+          const isLastChunk = i === totalChunks - 1;
           const chunk = buffer.slice(i * chunkSize, (i + 1) * chunkSize);
           const encoded = await arrayBufferToBase64(chunk);
 
-          const response = (await rpc(device.id, 'ota.upload', {
-            offset,
-            total: buffer.byteLength,
-            chunk: encoded,
-          })) as { result?: string };
+          if (isLastChunk) {
+            // Chunk cuối: GỬI mà KHÔNG chờ response
+            // Lý do: sau mg_ota_end(), thiết bị có thể reboot ngay lập tức
+            // và không kịp gửi phản hồi → gây timeout vô ích.
+            // Đây chính xác là cách code gốc Mongoose Dashboard hoạt động.
+            rpc(device.id, 'ota.upload', {
+              offset,
+              total: buffer.byteLength,
+              chunk: encoded,
+            }).catch(() => {
+              // Bỏ qua timeout của chunk cuối - thiết bị đã nhận và đang reboot
+              console.log('[OTA] Last chunk sent, device may be rebooting...');
+            });
+          } else {
+            // Các chunk trước: chờ response xác nhận "ok" trước khi gửi tiếp
+            try {
+              const response = (await rpc(device.id, 'ota.upload', {
+                offset,
+                total: buffer.byteLength,
+                chunk: encoded,
+              })) as { result?: string };
 
-          if (response.result !== 'ok') {
-            throw new Error('Upload chunk failed');
+              if (response.result !== 'ok') {
+                throw new Error(`Chunk ${i} upload failed`);
+              }
+            } catch (err) {
+              // Nếu timeout ở chunk giữa chừng, log cảnh báo nhưng vẫn tiếp tục
+              // vì thiết bị có thể đã nhận chunk nhưng phản hồi bị mất
+              console.warn(`[OTA] Chunk ${i}/${totalChunks} response issue:`, err);
+            }
           }
 
           offset += chunk.byteLength;

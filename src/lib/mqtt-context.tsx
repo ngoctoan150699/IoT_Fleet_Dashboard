@@ -123,12 +123,26 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
         };
         updateDevices(device);
       } else if (_topic.endsWith('/tx')) {
-        const id = parsed.id as string;
-        if (!id) return;
-        const handler = handlersRef.current[id];
+        // Debug: log raw response để xem format ID từ thiết bị
+        console.log('[MQTT RX /tx] Raw parsed:', JSON.stringify(parsed));
+        console.log('[MQTT RX /tx] parsed.id type:', typeof parsed.id, 'value:', parsed.id);
+
+        const incomingId = parsed.id !== undefined && parsed.id !== null ? String(parsed.id) : '';
+        if (!incomingId) {
+          console.warn('[MQTT RX /tx] No ID in response, skipping');
+          return;
+        }
+
+        console.log('[MQTT RX /tx] Looking for handler with key:', JSON.stringify(incomingId));
+        console.log('[MQTT RX /tx] Pending handler keys:', Object.keys(handlersRef.current));
+
+        const handler = handlersRef.current[incomingId];
         if (handler) {
+          console.log('[MQTT RX /tx] ✅ Handler found, resolving promise');
           handler(parsed);
-          delete handlersRef.current[id];
+          delete handlersRef.current[incomingId];
+        } else {
+          console.warn('[MQTT RX /tx] ❌ No handler matched! ID mismatch.');
         }
       }
     });
@@ -163,19 +177,23 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
       return new Promise((resolve, reject) => {
         if (!clientRef.current) return reject(new Error('Not connected'));
 
-        const randomId = Math.random().toString(36).substring(2, 42);
+        // Dùng number thay cho Math.random string vì thư viện nhúng ở C
+        // của STM32 dễ dàng parsing JSON struct dạng numeric ID hơn
+        const idNum = Math.floor(Math.random() * 100000) + Date.now();
+        const idStr = String(idNum);
+
         const timeout = setTimeout(() => {
-          delete handlersRef.current[randomId];
+          delete handlersRef.current[idStr];
           reject(new Error('Request timed out'));
         }, 30000);
 
-        handlersRef.current[randomId] = (msg) => {
+        handlersRef.current[idStr] = (msg) => {
           clearTimeout(timeout);
           resolve(msg);
         };
 
         const rxTopic = `${topic}/${deviceId}/rx`;
-        const payload: Record<string, unknown> = { method, id: randomId };
+        const payload: Record<string, unknown> = { method, id: idNum };
         if (params) payload.params = params;
 
         console.log(`[MQTT TX] ${rxTopic}: ${JSON.stringify(payload)}`);
