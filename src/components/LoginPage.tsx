@@ -56,7 +56,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Sign in</h2>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Đăng nhập để truy cập bảng điều khiển vận hành.
+              Đăng nhập để quản lý và cập nhật Firmware thiết bị STM32.
             </p>
           </div>
 
