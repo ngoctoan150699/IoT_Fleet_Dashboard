@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import mqtt, { MqttClient } from 'mqtt';
 
-// ─── Types ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface Device {
   id: string;
   topic: string;
@@ -27,7 +27,7 @@ interface MqttContextValue {
   forgetDevice: (device: Device) => void;
 }
 
-const DEFAULT_URL = 'wss://broker.hivemq.com:8884/mqtt';
+const DEFAULT_URL = 'wss://mqtt.factorydata.online';
 const DEFAULT_TOPIC = 'mg_mqtt_dashboard';
 
 const MqttContext = createContext<MqttContextValue | null>(null);
@@ -38,7 +38,7 @@ export function useMqtt() {
   return ctx;
 }
 
-// ─── Provider ────────────────────────────────────────────────────────
+// â”€â”€â”€ Provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function MqttProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,7 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
     if (savedTopic) setTopic(savedTopic);
   }, []);
 
-  // ── updateDevices helper (keep sorted: online first, then alphabetical) ──
+  // â”€â”€ updateDevices helper (keep sorted: online first, then alphabetical) â”€â”€
   const updateDevices = useCallback((incoming: Device) => {
     setDevices(prev => {
       const filtered = prev.filter(d => d.id !== incoming.id);
@@ -70,7 +70,7 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // ── connect ──
+  // â”€â”€ connect â”€â”€
   const connectBroker = useCallback(() => {
     if (clientRef.current) {
       clientRef.current.end(true);
@@ -123,7 +123,7 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
         };
         updateDevices(device);
       } else if (_topic.endsWith('/tx')) {
-        // Debug: log raw response để xem format ID từ thiết bị
+        // Debug: log raw response Ä‘á»ƒ xem format ID tá»« thiáº¿t bá»‹
         console.log('[MQTT RX /tx] Raw parsed:', JSON.stringify(parsed));
         console.log('[MQTT RX /tx] parsed.id type:', typeof parsed.id, 'value:', parsed.id);
 
@@ -138,30 +138,30 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
 
         const handler = handlersRef.current[incomingId];
         if (handler) {
-          console.log('[MQTT RX /tx] ✅ Handler found, resolving promise');
+          console.log('[MQTT RX /tx] âœ… Handler found, resolving promise');
           handler(parsed);
           delete handlersRef.current[incomingId];
         } else {
-          console.warn('[MQTT RX /tx] ❌ No handler matched! ID mismatch.');
+          console.warn('[MQTT RX /tx] âŒ No handler matched! ID mismatch.');
         }
       }
     });
 
     client.on('error', () => {
-      setError('Không thể kết nối đến MQTT broker.');
+      setError('KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n MQTT broker.');
       setLoading(false);
     });
 
     client.on('close', () => {
       if (!connected) {
-        setError('Kết nối bị đóng.');
+        setError('Káº¿t ná»‘i bá»‹ Ä‘Ã³ng.');
         setLoading(false);
       }
       setConnected(false);
     });
   }, [url, topic, connected, updateDevices]);
 
-  // ── disconnect ──
+  // â”€â”€ disconnect â”€â”€
   const disconnectBroker = useCallback(() => {
     if (clientRef.current) {
       clientRef.current.end(true);
@@ -171,14 +171,14 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
     setDevices([]);
   }, []);
 
-  // ── RPC publish ──
+  // â”€â”€ RPC publish â”€â”€
   const rpc = useCallback(
     (deviceId: string, method: string, params?: Record<string, unknown>): Promise<unknown> => {
       return new Promise((resolve, reject) => {
         if (!clientRef.current) return reject(new Error('Not connected'));
 
-        // Dùng number thay cho Math.random string vì thư viện nhúng ở C
-        // của STM32 dễ dàng parsing JSON struct dạng numeric ID hơn
+        // DÃ¹ng number thay cho Math.random string vÃ¬ thÆ° viá»‡n nhÃºng á»Ÿ C
+        // cá»§a STM32 dá»… dÃ ng parsing JSON struct dáº¡ng numeric ID hÆ¡n
         const idNum = Math.floor(Math.random() * 100000) + Date.now();
         const idStr = String(idNum);
 
@@ -203,7 +203,7 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
     [topic],
   );
 
-  // ── forgetDevice ──
+  // â”€â”€ forgetDevice â”€â”€
   const forgetDevice = useCallback(
     (device: Device) => {
       if (clientRef.current) {
