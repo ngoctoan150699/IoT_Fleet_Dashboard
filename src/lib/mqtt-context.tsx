@@ -179,7 +179,8 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
 
         // DÃ¹ng number thay cho Math.random string vÃ¬ thÆ° viá»‡n nhÃºng á»Ÿ C
         // cá»§a STM32 dá»… dÃ ng parsing JSON struct dáº¡ng numeric ID hÆ¡n
-        const idNum = Math.floor(Math.random() * 100000) + Date.now();
+        // Safe 32-bit positive integer for STM32 embedded parser (avoids long overflow)
+        const idNum = Math.floor(Math.random() * 900000) + 100000;
         const idStr = String(idNum);
 
         const timeout = setTimeout(() => {
